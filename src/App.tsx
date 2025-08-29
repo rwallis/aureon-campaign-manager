@@ -199,39 +199,6 @@ type Insight = {
   aiRequest: string[]; // things AI wants permission/control for
 };
 
-const baseInsights: Record<Exclude<Panel, "Overview" | "Coverage">, Insight> = {
-  Audience: {
-    text: "Refine audience targeting towards high converters to reduce CPA.",
-    improvement: 8,
-    aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
-    aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
-  },
-  "Landing Page": {
-    text: "Run A/B tests with simplified layouts to improve conversion rates.",
-    improvement: 10,
-    aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
-    aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
-  },
-  "Media Inventory": {
-    text:
-      "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
-    improvement: 6,
-    aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
-    aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
-  },
-  Creative: {
-    text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
-    improvement: 12,
-    aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
-    aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
-  },
-  "Data Feed Optimization": {
-    text: "Leverage DCO to personalize creative with real-time product data.",
-    improvement: 7,
-    aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
-    aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
-  },
-};
 
 // -----------------------------
 // Helpers + Dev-time tests
@@ -260,7 +227,44 @@ function getMissedPercentFromActivity(act: AICycleActivity): number {
     if (m) {
       const panelLabel = m[2].trim();
       // baseInsights keys are panel labels; fallback to 0 if not found
-      const info = (baseInsights as any)[panelLabel] as Insight | undefined;
+      const info = ({
+        Audience: {
+          text: "Refine audience targeting towards high converters to reduce CPA.",
+          improvement: 8,
+          aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+          aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+        },
+        "Landing Page": {
+          text: "Run A/B tests with simplified layouts to improve conversion rates.",
+          improvement: 10,
+          aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+          aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+        },
+        "Media Inventory": {
+          text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+          improvement: 6,
+          aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+          aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+        },
+        Creative: {
+          text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+          improvement: 12,
+          aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+          aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+        },
+        "Data Feed Optimization": {
+          text: "Leverage DCO to personalize creative with real-time product data.",
+          improvement: 7,
+          aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+          aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+        },
+        "AI Activities": {
+          text: "",
+          improvement: 0,
+          aiControl: [],
+          aiRequest: []
+        }
+      } as any)[panelLabel] as Insight | undefined;
       if (info && typeof info.improvement === "number") return info.improvement;
       // if panelLabel isn't a top-level insight, try to coerce numeric percent from capture
       const parsed = Number(m[1]);
@@ -498,7 +502,44 @@ export default function App() {
 
   function findParentPanel(label: string): Exclude<Panel, "Overview" | "Coverage"> | undefined {
     // direct panel name
-    if ((Object.keys(baseInsights) as string[]).includes(label)) {
+    if ((Object.keys({
+        Audience: {
+          text: "Refine audience targeting towards high converters to reduce CPA.",
+          improvement: 8,
+          aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+          aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+        },
+        "Landing Page": {
+          text: "Run A/B tests with simplified layouts to improve conversion rates.",
+          improvement: 10,
+          aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+          aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+        },
+        "Media Inventory": {
+          text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+          improvement: 6,
+          aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+          aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+        },
+        Creative: {
+          text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+          improvement: 12,
+          aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+          aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+        },
+        "Data Feed Optimization": {
+          text: "Leverage DCO to personalize creative with real-time product data.",
+          improvement: 7,
+          aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+          aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+        },
+        "AI Activities": {
+          text: "",
+          improvement: 0,
+          aiControl: [],
+          aiRequest: []
+        }
+      }) as string[]).includes(label)) {
       return label as Exclude<Panel, "Overview" | "Coverage">;
     }
     // check subcategories
@@ -521,7 +562,44 @@ export default function App() {
     const panelKey = findParentPanel(label);
     const imp =
       improvement ??
-      (panelKey ? baseInsights[panelKey as Exclude<Panel, "Overview" | "Coverage">]?.improvement || 0 : 0);
+      (panelKey ? {
+        Audience: {
+          text: "Refine audience targeting towards high converters to reduce CPA.",
+          improvement: 8,
+          aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+          aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+        },
+        "Landing Page": {
+          text: "Run A/B tests with simplified layouts to improve conversion rates.",
+          improvement: 10,
+          aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+          aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+        },
+        "Media Inventory": {
+          text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+          improvement: 6,
+          aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+          aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+        },
+        Creative: {
+          text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+          improvement: 12,
+          aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+          aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+        },
+        "Data Feed Optimization": {
+          text: "Leverage DCO to personalize creative with real-time product data.",
+          improvement: 7,
+          aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+          aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+        },
+        "AI Activities": {
+          text: "",
+          improvement: 0,
+          aiControl: [],
+          aiRequest: []
+        }
+      }[panelKey as Exclude<Panel, "Overview" | "Coverage">]?.improvement || 0 : 0);
     // compute forecast from the last forecast values so forecasts chain predictably
     const { CPA: forecastCPA, Conversions: forecastConversions } = computeForecast(
       { CPA: last.forecastCPA, Conversions: last.forecastConversions },
@@ -546,8 +624,82 @@ export default function App() {
     const implemented: string[] = [];
     const requestedButNotControlled: string[] = [];
 
-    if (panelKey && baseInsights[panelKey as Exclude<Panel, "Overview" | "Coverage">]) {
-      const info = baseInsights[panelKey as Exclude<Panel, "Overview" | "Coverage">];
+    if (panelKey && {
+      Audience: {
+        text: "Refine audience targeting towards high converters to reduce CPA.",
+        improvement: 8,
+        aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+        aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+      },
+      "Landing Page": {
+        text: "Run A/B tests with simplified layouts to improve conversion rates.",
+        improvement: 10,
+        aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+        aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+      },
+      "Media Inventory": {
+        text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+        improvement: 6,
+        aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+        aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+      },
+      Creative: {
+        text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+        improvement: 12,
+        aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+        aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+      },
+      "Data Feed Optimization": {
+        text: "Leverage DCO to personalize creative with real-time product data.",
+        improvement: 7,
+        aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+        aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+      },
+      "AI Activities": {
+        text: "",
+        improvement: 0,
+        aiControl: [],
+        aiRequest: []
+      }
+    }[panelKey as Exclude<Panel, "Overview" | "Coverage">]) {
+      const info = {
+        Audience: {
+          text: "Refine audience targeting towards high converters to reduce CPA.",
+          improvement: 8,
+          aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+          aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+        },
+        "Landing Page": {
+          text: "Run A/B tests with simplified layouts to improve conversion rates.",
+          improvement: 10,
+          aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+          aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+        },
+        "Media Inventory": {
+          text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+          improvement: 6,
+          aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+          aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+        },
+        Creative: {
+          text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+          improvement: 12,
+          aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+          aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+        },
+        "Data Feed Optimization": {
+          text: "Leverage DCO to personalize creative with real-time product data.",
+          improvement: 7,
+          aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+          aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+        },
+        "AI Activities": {
+          text: "",
+          improvement: 0,
+          aiControl: [],
+          aiRequest: []
+        }
+      }[panelKey as Exclude<Panel, "Overview" | "Coverage">];
       suggested.push(info.text);
       // what AI can change now
       implemented.push(...info.aiControl.map((i) => `Did: ${i}`));
@@ -1025,7 +1177,44 @@ export default function App() {
                 <CoverageSummaryCard />
 
                 <div className="grid md:grid-cols-2 gap-6">
-                  {Object.entries(baseInsights).map(([title, insight]) => (
+                  {Object.entries({
+                      Audience: {
+                        text: "Refine audience targeting towards high converters to reduce CPA.",
+                        improvement: 8,
+                        aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+                        aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+                      },
+                      "Landing Page": {
+                        text: "Run A/B tests with simplified layouts to improve conversion rates.",
+                        improvement: 10,
+                        aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+                        aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+                      },
+                      "Media Inventory": {
+                        text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+                        improvement: 6,
+                        aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+                        aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+                      },
+                      Creative: {
+                        text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+                        improvement: 12,
+                        aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+                        aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+                      },
+                      "Data Feed Optimization": {
+                        text: "Leverage DCO to personalize creative with real-time product data.",
+                        improvement: 7,
+                        aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+                        aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+                      },
+                      "AI Activities": {
+                        text: "",
+                        improvement: 0,
+                        aiControl: [],
+                        aiRequest: []
+                      }
+                    }).map(([title, insight]) => (
                     <motion.button
                       key={title}
                       onClick={() => setActive(title as Exclude<Panel, "Overview" | "Coverage">)}
@@ -1060,7 +1249,44 @@ export default function App() {
               <div>
                 {renderPanelContent(
                   active as Exclude<Panel, "Overview" | "Coverage" | "Creative">,
-                  baseInsights[active as Exclude<Panel, "Overview" | "Coverage">]
+                  {
+                    Audience: {
+                      text: "Refine audience targeting towards high converters to reduce CPA.",
+                      improvement: 8,
+                      aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+                      aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+                    },
+                    "Landing Page": {
+                      text: "Run A/B tests with simplified layouts to improve conversion rates.",
+                      improvement: 10,
+                      aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+                      aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+                    },
+                    "Media Inventory": {
+                      text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+                      improvement: 6,
+                      aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+                      aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+                    },
+                    Creative: {
+                      text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+                      improvement: 12,
+                      aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+                      aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+                    },
+                    "Data Feed Optimization": {
+                      text: "Leverage DCO to personalize creative with real-time product data.",
+                      improvement: 7,
+                      aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+                      aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+                    },
+                    "AI Activities": {
+                      text: "",
+                      improvement: 0,
+                      aiControl: [],
+                      aiRequest: []
+                    }
+                  }[active as Exclude<Panel, "Overview" | "Coverage">]
                 )}
               </div>
             )}
@@ -1068,7 +1294,44 @@ export default function App() {
             {/* Creative panel */}
             {active === "Creative" && (
               <div className="space-y-6">
-                {renderPanelContent("Creative", baseInsights["Creative"])}
+                {renderPanelContent("Creative", {
+                    Audience: {
+                      text: "Refine audience targeting towards high converters to reduce CPA.",
+                      improvement: 8,
+                      aiControl: ["Lookalike audience expansion", "Demographic targeting refinements"],
+                      aiRequest: ["Access to CRM segments", "Geo-location targeting permissions"],
+                    },
+                    "Landing Page": {
+                      text: "Run A/B tests with simplified layouts to improve conversion rates.",
+                      improvement: 10,
+                      aiControl: ["Headline/CTA suggestions", "Layout recommendations"],
+                      aiRequest: ["Ability to modify landing page templates", "Access to form conversion data"],
+                    },
+                    "Media Inventory": {
+                      text: "Shift spend towards publishers delivering the lowest CPA. Based on goals (e.g., awareness), some channels are more effective than others.",
+                      improvement: 6,
+                      aiControl: ["Budget allocation recommendations", "Channel performance analysis"],
+                      aiRequest: ["Authority to adjust media mix", "Direct DSP access"],
+                    },
+                    Creative: {
+                      text: "Test new ad concepts with different CTAs and visuals to boost engagement.",
+                      improvement: 12,
+                      aiControl: ["Automated creative variant generation", "Dynamic CTA testing"],
+                      aiRequest: ["Direct integration with creative approval workflows", "Access to DAM for assets"],
+                    },
+                    "Data Feed Optimization": {
+                      text: "Leverage DCO to personalize creative with real-time product data.",
+                      improvement: 7,
+                      aiControl: ["Real-time feed monitoring", "Automated variant insertion"],
+                      aiRequest: ["Permission to modify product catalog fields", "Deeper CDP integration"],
+                    },
+                    "AI Activities": {
+                      text: "",
+                      improvement: 0,
+                      aiControl: [],
+                      aiRequest: []
+                    }
+                  }["Creative"])}
 
                 <div className="card">
                   <h2 className="h2 mb-4">Creative Variants Lab</h2>
