@@ -327,6 +327,54 @@ function ProgressRow({ label, value }: { label: string; value: number }) {
 }
 
 // -----------------------------
+// Audience sentiment (new)
+// -----------------------------
+type SentimentCategory = {
+  category: string;
+  score: number; // 0-100 (higher is more positive)
+  trend: "up" | "down" | "flat";
+  topTerms: string[]; // short list of trending terms for the category
+};
+
+const initialAudienceSentiment: SentimentCategory[] = [
+  { category: "Sustainability", score: 78, trend: "up", topTerms: ["recyclable", "eco-friendly", "sustain"] },
+  { category: "Price", score: 42, trend: "down", topTerms: ["discount", "sale", "affordable"] },
+  { category: "Quality", score: 64, trend: "up", topTerms: ["durable", "premium", "long-lasting"] },
+  { category: "Customer Service", score: 51, trend: "flat", topTerms: ["support", "return", "warranty"] },
+];
+
+// convert sentiment into audience suggestions with a conservative suggested improvement %
+function computeAudienceSuggestions(sentiments: SentimentCategory[]) {
+  const suggestions: { title: string; reason: string; improvement: number }[] = [];
+  for (const s of sentiments) {
+    // simple heuristic:
+    // - high positive sentiment: expand prospecting to interest-based lookalikes
+    // - neutral: test tailored messaging
+    // - negative: retarget existing converters with reassurance/offer
+    if (s.score >= 70) {
+      suggestions.push({
+        title: `Expand to interest: ${s.category}`,
+        reason: `Positive trending sentiment (${s.score}%). Target lookalikes and interest cohorts referencing ${s.topTerms[0]}.`,
+        improvement: Math.max(2, Math.round(s.score * 0.06)), // conservative
+      });
+    } else if (s.score >= 45) {
+      suggestions.push({
+        title: `A/B test messaging for ${s.category}`,
+        reason: `Neutral sentiment (${s.score}%). Run headline/CTA variants emphasizing ${s.topTerms[0]}.`,
+        improvement: Math.max(1, Math.round(s.score * 0.03)),
+      });
+    } else {
+      suggestions.push({
+        title: `Retarget with reassurance on ${s.category}`,
+        reason: `Lower sentiment (${s.score}%). Use retargeting with guarantees, offers, or testimonials about ${s.topTerms[0]}.`,
+        improvement: Math.max(1, Math.round(s.score * 0.02)),
+      });
+    }
+  }
+  return suggestions;
+}
+
+// -----------------------------
 // App
 // -----------------------------
 export default function App() {
@@ -439,6 +487,26 @@ export default function App() {
 
   // single-slider editor: which channel is currently being adjusted
   const [selectedChannel, setSelectedChannel] = useState<"OOH" | "TV" | "Digital" | "CTV">("OOH");
+
+  // audience sentiment + derived suggestions state
+  const [selectedBrand] = useState("Example Brand"); // placeholder for brand selector later
+  const [audienceSentiment, setAudienceSentiment] = useState<SentimentCategory[]>(initialAudienceSentiment);
+  const [audienceSuggestions, setAudienceSuggestions] = useState(() =>
+    computeAudienceSuggestions(initialAudienceSentiment)
+  );
+
+  // small helper to "refresh" sentiment (simulates new AI analysis)
+  function refreshAudienceSentiment() {
+    // naive shuffle / jitter to simulate changes
+    const next = audienceSentiment.map((s) => {
+      const jitter = Math.round((Math.random() - 0.5) * 12);
+      const score = Math.min(100, Math.max(0, s.score + jitter));
+      const trend = jitter > 3 ? "up" : jitter < -3 ? "down" : "flat";
+      return { ...s, score, trend };
+    });
+    setAudienceSentiment(next);
+    setAudienceSuggestions(computeAudienceSuggestions(next));
+  }
 
   // helper: update selected channel to newVal and redistribute remaining 100% to others
   function setAllocForChannel(channel: "OOH" | "TV" | "Digital" | "CTV", rawVal: number) {
@@ -725,6 +793,73 @@ export default function App() {
     <motion.div whileHover={{ scale: 1.01 }} className="card">
       <h3 className="h3 mb-2">{title}</h3>
       <p className="text-gray-700 mb-4">{insight.text}</p>
+
+      {/* Audience: trending sentiment + AI audience suggestions */}
+      {title === "Audience" && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-sm text-gray-600">Brand</div>
+              <div className="font-medium">{selectedBrand}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refreshAudienceSentiment}
+                className="px-3 py-1 rounded bg-blue-600 text-white text-sm"
+              >
+                Refresh Sentiment
+              </button>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-3">
+            {audienceSentiment.map((s) => (
+              <div key={s.category} className="border rounded p-3 bg-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">{s.category}</div>
+                    <div className="text-xs text-gray-500">{s.topTerms.join(", ")}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold">{s.score}%</div>
+                    <div className="text-xs text-gray-500">{s.trend === "up" ? "↑" : s.trend === "down" ? "↓" : "→"}</div>
+                  </div>
+                </div>
+                <div className="h-2 bg-gray-200 rounded mt-3">
+                  <div
+                    className="h-2 rounded bg-green-500"
+                    style={{ width: `${s.score}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-2">AI Audience Suggestions</h4>
+            {audienceSuggestions.map((sg, i) => (
+              <div key={i} className="flex items-start justify-between mb-2">
+                <div>
+                  <div className="font-medium">{sg.title}</div>
+                  <div className="text-sm text-gray-600">{sg.reason}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-green-600 font-semibold">{sg.improvement}%</div>
+                  <button
+                    onClick={() => {
+                      // apply as an audience forecast / update (uses existing applyImprovement)
+                      applyImprovement(`Audience (${sg.title})`, sg.improvement);
+                    }}
+                    className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded bg-green-600 text-white text-sm"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Extra UI for certain panels */}
       {title === "Media Inventory" && (
