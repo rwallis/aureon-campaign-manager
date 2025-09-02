@@ -1201,7 +1201,6 @@ export default function App() {
   // -----------------------------
   // Decision Engine UI (embedded local component)
   // -----------------------------
-  // (keeps everything local to avoid new files; uses useMemo + recharts BarChart/Bar)
   function DecisionEngineMarketerUI() {
     type KPI = { targetCPA?: number; targetROAS?: number };
     type Context = { campaignId: string; cycleISO: string; kpis: KPI; signals: Record<string, any> };
@@ -1323,36 +1322,894 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Context + Signals */}
           <section className="rounded-2xl bg-white p-5 shadow">
-            <h3 className="text-sm text-gray-500 mb-2">Context</h3>
-            <KeyVal k="Campaign" v={context.campaignId} />
-            <KeyVal k="Target CPA" v={`$${context.kpis.targetCPA ?? "—"}`} />
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm text-gray-500">Context</h3>
+              <Badge className="bg-gray-100 text-gray-700" title={context.cycleISO}>Cycle</Badge>
+            </div>
+            <div className="space-y-2">
+              <KeyVal k="Campaign" v={context.campaignId} />
+              <KeyVal k="Target CPA" v={`$${context.kpis.targetCPA ?? "—"}`} />
+
+              <div className="pt-3">
+                <div className="mb-1 text-sm font-medium">Signals</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Spend by partner</div>
+                    <div className="mt-1 font-medium">
+                      Meta ${context.signals.spendByPartner.meta} · YouTube ${context.signals.spendByPartner.youtube} · CTV ${context.signals.spendByPartner.ctv}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Identity coverage</div>
+                    <div className="mt-1 font-medium">Meta {(context.signals.identityCoverage.meta * 100).toFixed(0)}% · YouTube {(context.signals.identityCoverage.youtube * 100).toFixed(0)}%</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">CPA by audience</div>
+                    <div className="mt-1 font-medium">LAL ${context.signals.cpaByAudience.lkal_2} · Broad ${context.signals.cpaByAudience.broad}</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Creative fatigue</div>
+                    <div className="mt-1 font-medium">ID 17 → {(context.signals.fatigueIndex.creative_17 * 100).toFixed(0)}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
+          {/* Candidates */}
           <section className="rounded-2xl bg-white p-5 shadow">
             <h3 className="text-sm text-gray-500 mb-2">Candidates</h3>
             <ul className="space-y-2">
-              {candidates.map((c) => <li key={c.id} className="text-sm">{c.id} · {c.type}</li>)}
+              {candidates.map((c) => (
+                <li key={c.id} className="flex items-center justify-between rounded-xl border p-3">
+                  <div>
+                    <div className="font-medium">{c.type.replace("_", " ")}</div>
+                    <div className="text-xs text-gray-600">{JSON.stringify(c.details)}</div>
+                  </div>
+                  <Badge className="bg-blue-50 text-blue-700">explore</Badge>
+                </li>
+              ))}
             </ul>
           </section>
 
+          {/* Ranked / Chart */}
           <section className="rounded-2xl bg-white p-5 shadow">
             <h3 className="text-sm text-gray-500 mb-2">Ranked</h3>
-            {!rankResp ? <div className="text-sm text-gray-500">No recommendations yet</div> : (
+            {!rankResp ? (
+              <div className="text-sm text-gray-500">No recommendations yet</div>
+            ) : (
               <>
                 <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="score" /></BarChart>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="score" fill="#60a5fa" />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
+
+                <ul className="mt-3 space-y-2">
+                  {rankResp.ranked.map((r, idx) => (
+                    <li key={r.candidateId} className="flex items-center justify-between rounded-xl border p-3">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold">{idx + 1}</span>
+                        <div>
+                          <div className="font-medium">{r.candidateId}</div>
+                          <div className="text-xs text-gray-600">score {(r.score * 100).toFixed(1)} • prob {(r.probability ? r.probability * 100 : r.score * 100).toFixed(0)}%</div>
+                        </div>
+                      </div>
+                      {idx === 0 ? (
+                        <button onClick={approveChosen} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
+                          Approve & apply
+                        </button>
+                      ) : (
+                        <Badge className="bg-gray-50 text-gray-700">alternative</Badge>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </>
             )}
           </section>
         </div>
-      </div>
-    );
-  };
 
+        {/* Latest Reward (for learning) */}
+        <div className="mt-2 rounded-2xl bg-white p-5 shadow">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Latest Reward (for learning)</h2>
+            <Badge className="bg-amber-100 text-amber-800" title="Normalized 0..1">reward</Badge>
+          </div>
+          {!lastReward ? (
+            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">No reward posted yet. Approve a recommendation or enable auto-apply.</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Event</div>
+                <div className="font-medium break-all">{lastReward.eventId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Candidate</div>
+                <div className="font-medium">{lastReward.candidateId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Reward</div>
+                <div className="font-medium">{lastReward.reward}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Observed</div>
+                <div className="font-medium text-xs">{JSON.stringify(lastReward.observed)}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+     );
+   }
+ 
+  // -----------------------------
+  // Decision Engine UI (embedded local component)
+  // -----------------------------
+  function DecisionEngineMarketerUI() {
+    type KPI = { targetCPA?: number; targetROAS?: number };
+    type Context = { campaignId: string; cycleISO: string; kpis: KPI; signals: Record<string, any> };
+    type CandidateAction = { id: string; type: string; details: Record<string, any>; features?: Record<string, any> };
+    type RankRequest = { context: Context; candidates: CandidateAction[] };
+    type RankedItem = { candidateId: string; score: number; probability?: number };
+    type RankResponse = { eventId: string; chosen: RankedItem[]; ranked: RankedItem[]; reasons?: string[] };
+    type RewardEvent = { eventId: string; candidateId: string; reward: number; observed?: Record<string, number>; tsISO?: string };
+
+    const initialContext: Context = {
+      campaignId: "cmp_123",
+      cycleISO: new Date().toISOString(),
+      kpis: { targetCPA: 42 },
+      signals: {
+        spendByPartner: { meta: 4300, youtube: 2700, ctv: 800 },
+        cpaByAudience: { lkal_2: 38.2, broad: 55.9 },
+        identityCoverage: { meta: 0.62, youtube: 0.48 },
+        fatigueIndex: { creative_17: 0.81 },
+        paceVsPlan: { today: 0.94 },
+      },
+    };
+
+    const initialCandidates: CandidateAction[] = [
+      { id: "act_1", type: "budget_shift", details: { partner: "youtube", deltaPct: 10 } },
+      { id: "act_2", type: "pause_creative", details: { partner: "meta", creativeId: "creative_17" } },
+      { id: "act_3", type: "audience_expand", details: { partner: "ctv", segment: "lr_rampid_abc" } },
+    ];
+
+    function simulateAzurePersonalizer(req: RankRequest): RankResponse {
+      const { signals } = req.context;
+      const idCov = signals.identityCoverage || {};
+      const base = req.candidates.map((c) => {
+        let score = Math.random() * 0.2 + 0.4;
+        if (c.type === "budget_shift" && idCov[c.details.partner] > 0.5) score += 0.25;
+        if (c.type === "pause_creative") score += (signals.fatigueIndex?.[c.details.creativeId] || 0) * 0.3;
+        if (c.type === "audience_expand") score += 0.05;
+        return { candidateId: c.id, score, probability: Math.max(0.05, Math.min(0.95, score)) };
+      });
+      const ranked = base.sort((a, b) => b.score - a.score);
+      return { eventId: `rank_${Date.now()}_az`, chosen: [ranked[0]], ranked, reasons: ["Identity coverage trending higher", "Creative fatigue detected", "Maintaining exploration (ε≈0.1)"] };
+    }
+
+    function simulateVW(req: RankRequest): RankResponse {
+      const { signals } = req.context;
+      const fatigue = signals.fatigueIndex || {};
+      const results = req.candidates.map((c) => {
+        let s = Math.random() * 0.3 + 0.35;
+        if (c.type === "pause_creative") s += (fatigue[c.details.creativeId] || 0) * 0.25;
+        if (c.type === "budget_shift") s += 0.1;
+        if (c.type === "audience_expand") s += 0.08;
+        return { candidateId: c.id, score: s, probability: Math.max(0.05, Math.min(0.95, s)) };
+      });
+      const ranked = results.sort((a, b) => b.score - a.score);
+      return { eventId: `rank_${Date.now()}_vw`, chosen: [ranked[0]], ranked, reasons: ["Counterfactual-safe choice via propensity logging", "Exploration on for cold-start"] };
+    }
+
+    function Badge({ children, title, className = "" }: { children: React.ReactNode; title?: string; className?: string }) {
+      return <span title={title} className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>{children}</span>;
+    }
+    function KeyVal({ k, v }: { k: string; v: any }) {
+      return (
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">{k}</span>
+          <span className="font-medium text-gray-900">{String(v)}</span>
+        </div>
+      );
+    }
+
+    const [engine, setEngine] = useState<"Azure Personalizer" | "Vowpal Wabbit">("Azure Personalizer");
+    const [context, setContext] = useState<Context>(initialContext);
+    const [candidates, setCandidates] = useState<CandidateAction[]>(initialCandidates);
+    const [rankResp, setRankResp] = useState<RankResponse | null>(null);
+    const [autoApply, setAutoApply] = useState(false);
+    const [lastReward, setLastReward] = useState<RewardEvent | null>(null);
+
+    const chartData = useMemo(() => {
+      if (!rankResp) return [];
+      return rankResp.ranked.map((r) => ({ name: r.candidateId, score: Number((r.score * 100).toFixed(1)) }));
+    }, [rankResp]);
+
+    function runRank() {
+      const req: RankRequest = { context: { ...context, cycleISO: new Date().toISOString() }, candidates };
+      const res = engine === "Azure Personalizer" ? simulateAzurePersonalizer(req) : simulateVW(req);
+      setRankResp(res);
+      if (autoApply) {
+        setTimeout(() => {
+          const reward = Number((0.55 + Math.random() * 0.3).toFixed(2));
+          const evt: RewardEvent = { eventId: res.eventId, candidateId: res.chosen[0].candidateId, reward, observed: { conversions: Math.round(5 + Math.random() * 10), spend: Math.round(500 + Math.random() * 900) }, tsISO: new Date().toISOString() };
+          setLastReward(evt);
+        }, 600);
+      }
+    }
+
+    function approveChosen() {
+      if (!rankResp) return;
+      const reward = Number((0.55 + Math.random() * 0.3).toFixed(2));
+      const evt: RewardEvent = { eventId: rankResp.eventId, candidateId: rankResp.chosen[0].candidateId, reward, observed: { conversions: Math.round(5 + Math.random() * 10), spend: Math.round(500 + Math.random() * 900) }, tsISO: new Date().toISOString() };
+      setLastReward(evt);
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl bg-white p-5 shadow">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Decision Engine (Demo)</h2>
+            <div className="text-xs text-gray-500">Engine: {engine}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <select className="rounded-xl border bg-white px-3 py-2 text-sm shadow-sm" value={engine} onChange={(e) => setEngine(e.target.value as any)}>
+              <option>Azure Personalizer</option>
+              <option>Vowpal Wabbit</option>
+            </select>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4" checked={autoApply} onChange={(e) => setAutoApply(e.target.checked)} />
+              Auto-apply
+            </label>
+            <button onClick={runRank} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white">Get recommendations</button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Context + Signals */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+                       <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm text-gray-500">Context</h3>
+              <Badge className="bg-gray-100 text-gray-700" title={context.cycleISO}>Cycle</Badge>
+            </div>
+            <div className="space-y-2">
+              <KeyVal k="Campaign" v={context.campaignId} />
+              <KeyVal k="Target CPA" v={`$${context.kpis.targetCPA ?? "—"}`} />
+
+              <div className="pt-3">
+                <div className="mb-1 text-sm font-medium">Signals</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Spend by partner</div>
+                    <div className="mt-1 font-medium">
+                      Meta ${context.signals.spendByPartner.meta} · YouTube ${context.signals.spendByPartner.youtube} · CTV ${context.signals.spendByPartner.ctv}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Identity coverage</div>
+                    <div className="mt-1 font-medium">Meta {(context.signals.identityCoverage.meta * 100).toFixed(0)}% · YouTube {(context.signals.identityCoverage.youtube * 100).toFixed(0)}%</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">CPA by audience</div>
+                    <div className="mt-1 font-medium">LAL ${context.signals.cpaByAudience.lkal_2} · Broad ${context.signals.cpaByAudience.broad}</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Creative fatigue</div>
+                    <div className="mt-1 font-medium">ID 17 → {(context.signals.fatigueIndex.creative_17 * 100).toFixed(0)}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Candidates */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <h3 className="text-sm text-gray-500 mb-2">Candidates</h3>
+            <ul className="space-y-2">
+              {candidates.map((c) => (
+                <li key={c.id} className="flex items-center justify-between rounded-xl border p-3">
+                  <div>
+                    <div className="font-medium">{c.type.replace("_", " ")}</div>
+                    <div className="text-xs text-gray-600">{JSON.stringify(c.details)}</div>
+                  </div>
+                  <Badge className="bg-blue-50 text-blue-700">explore</Badge>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Ranked / Chart */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <h3 className="text-sm text-gray-500 mb-2">Ranked</h3>
+            {!rankResp ? (
+              <div className="text-sm text-gray-500">No recommendations yet</div>
+            ) : (
+              <>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="score" fill="#60a5fa" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <ul className="mt-3 space-y-2">
+                  {rankResp.ranked.map((r, idx) => (
+                    <li key={r.candidateId} className="flex items-center justify-between rounded-xl border p-3">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold">{idx + 1}</span>
+                        <div>
+                          <div className="font-medium">{r.candidateId}</div>
+                          <div className="text-xs text-gray-600">score {(r.score * 100).toFixed(1)} • prob {(r.probability ? r.probability * 100 : r.score * 100).toFixed(0)}%</div>
+                        </div>
+                      </div>
+                      {idx === 0 ? (
+                        <button onClick={approveChosen} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
+                          Approve & apply
+                        </button>
+                      ) : (
+                        <Badge className="bg-gray-50 text-gray-700">alternative</Badge>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        </div>
+
+        {/* Latest Reward (for learning) */}
+        <div className="mt-2 rounded-2xl bg-white p-5 shadow">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Latest Reward (for learning)</h2>
+            <Badge className="bg-amber-100 text-amber-800" title="Normalized 0..1">reward</Badge>
+          </div>
+          {!lastReward ? (
+            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">No reward posted yet. Approve a recommendation or enable auto-apply.</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Event</div>
+                <div className="font-medium break-all">{lastReward.eventId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Candidate</div>
+                <div className="font-medium">{lastReward.candidateId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Reward</div>
+                <div className="font-medium">{lastReward.reward}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Observed</div>
+                <div className="font-medium text-xs">{JSON.stringify(lastReward.observed)}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+     );
+   }
+ 
+  // -----------------------------
+  // Decision Engine UI (embedded local component)
+  // -----------------------------
+  function DecisionEngineMarketerUI() {
+    type KPI = { targetCPA?: number; targetROAS?: number };
+    type Context = { campaignId: string; cycleISO: string; kpis: KPI; signals: Record<string, any> };
+    type CandidateAction = { id: string; type: string; details: Record<string, any>; features?: Record<string, any> };
+    type RankRequest = { context: Context; candidates: CandidateAction[] };
+    type RankedItem = { candidateId: string; score: number; probability?: number };
+    type RankResponse = { eventId: string; chosen: RankedItem[]; ranked: RankedItem[]; reasons?: string[] };
+    type RewardEvent = { eventId: string; candidateId: string; reward: number; observed?: Record<string, number>; tsISO?: string };
+
+    const initialContext: Context = {
+      campaignId: "cmp_123",
+      cycleISO: new Date().toISOString(),
+      kpis: { targetCPA: 42 },
+      signals: {
+        spendByPartner: { meta: 4300, youtube: 2700, ctv: 800 },
+        cpaByAudience: { lkal_2: 38.2, broad: 55.9 },
+        identityCoverage: { meta: 0.62, youtube: 0.48 },
+        fatigueIndex: { creative_17: 0.81 },
+        paceVsPlan: { today: 0.94 },
+      },
+    };
+
+    const initialCandidates: CandidateAction[] = [
+      { id: "act_1", type: "budget_shift", details: { partner: "youtube", deltaPct: 10 } },
+      { id: "act_2", type: "pause_creative", details: { partner: "meta", creativeId: "creative_17" } },
+      { id: "act_3", type: "audience_expand", details: { partner: "ctv", segment: "lr_rampid_abc" } },
+    ];
+
+    function simulateAzurePersonalizer(req: RankRequest): RankResponse {
+      const { signals } = req.context;
+      const idCov = signals.identityCoverage || {};
+      const base = req.candidates.map((c) => {
+        let score = Math.random() * 0.2 + 0.4;
+        if (c.type === "budget_shift" && idCov[c.details.partner] > 0.5) score += 0.25;
+        if (c.type === "pause_creative") score += (signals.fatigueIndex?.[c.details.creativeId] || 0) * 0.3;
+        if (c.type === "audience_expand") score += 0.05;
+        return { candidateId: c.id, score, probability: Math.max(0.05, Math.min(0.95, score)) };
+      });
+      const ranked = base.sort((a, b) => b.score - a.score);
+      return { eventId: `rank_${Date.now()}_az`, chosen: [ranked[0]], ranked, reasons: ["Identity coverage trending higher", "Creative fatigue detected", "Maintaining exploration (ε≈0.1)"] };
+    }
+
+    function simulateVW(req: RankRequest): RankResponse {
+      const { signals } = req.context;
+      const fatigue = signals.fatigueIndex || {};
+      const results = req.candidates.map((c) => {
+        let s = Math.random() * 0.3 + 0.35;
+        if (c.type === "pause_creative") s += (fatigue[c.details.creativeId] || 0) * 0.25;
+        if (c.type === "budget_shift") s += 0.1;
+        if (c.type === "audience_expand") s += 0.08;
+        return { candidateId: c.id, score: s, probability: Math.max(0.05, Math.min(0.95, s)) };
+      });
+      const ranked = results.sort((a, b) => b.score - a.score);
+      return { eventId: `rank_${Date.now()}_vw`, chosen: [ranked[0]], ranked, reasons: ["Counterfactual-safe choice via propensity logging", "Exploration on for cold-start"] };
+    }
+
+    function Badge({ children, title, className = "" }: { children: React.ReactNode; title?: string; className?: string }) {
+      return <span title={title} className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>{children}</span>;
+    }
+    function KeyVal({ k, v }: { k: string; v: any }) {
+      return (
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">{k}</span>
+          <span className="font-medium text-gray-900">{String(v)}</span>
+        </div>
+      );
+    }
+
+    const [engine, setEngine] = useState<"Azure Personalizer" | "Vowpal Wabbit">("Azure Personalizer");
+    const [context, setContext] = useState<Context>(initialContext);
+    const [candidates, setCandidates] = useState<CandidateAction[]>(initialCandidates);
+    const [rankResp, setRankResp] = useState<RankResponse | null>(null);
+    const [autoApply, setAutoApply] = useState(false);
+    const [lastReward, setLastReward] = useState<RewardEvent | null>(null);
+
+    const chartData = useMemo(() => {
+      if (!rankResp) return [];
+      return rankResp.ranked.map((r) => ({ name: r.candidateId, score: Number((r.score * 100).toFixed(1)) }));
+    }, [rankResp]);
+
+    function runRank() {
+      const req: RankRequest = { context: { ...context, cycleISO: new Date().toISOString() }, candidates };
+      const res = engine === "Azure Personalizer" ? simulateAzurePersonalizer(req) : simulateVW(req);
+      setRankResp(res);
+      if (autoApply) {
+        setTimeout(() => {
+          const reward = Number((0.55 + Math.random() * 0.3).toFixed(2));
+          const evt: RewardEvent = { eventId: res.eventId, candidateId: res.chosen[0].candidateId, reward, observed: { conversions: Math.round(5 + Math.random() * 10), spend: Math.round(500 + Math.random() * 900) }, tsISO: new Date().toISOString() };
+          setLastReward(evt);
+        }, 600);
+      }
+    }
+
+    function approveChosen() {
+      if (!rankResp) return;
+      const reward = Number((0.55 + Math.random() * 0.3).toFixed(2));
+      const evt: RewardEvent = { eventId: rankResp.eventId, candidateId: rankResp.chosen[0].candidateId, reward, observed: { conversions: Math.round(5 + Math.random() * 10), spend: Math.round(500 + Math.random() * 900) }, tsISO: new Date().toISOString() };
+      setLastReward(evt);
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl bg-white p-5 shadow">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Decision Engine (Demo)</h2>
+            <div className="text-xs text-gray-500">Engine: {engine}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <select className="rounded-xl border bg-white px-3 py-2 text-sm shadow-sm" value={engine} onChange={(e) => setEngine(e.target.value as any)}>
+              <option>Azure Personalizer</option>
+              <option>Vowpal Wabbit</option>
+            </select>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4" checked={autoApply} onChange={(e) => setAutoApply(e.target.checked)} />
+              Auto-apply
+            </label>
+            <button onClick={runRank} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white">Get recommendations</button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Context + Signals */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm text-gray-500">Context</h3>
+              <Badge className="bg-gray-100 text-gray-700" title={context.cycleISO}>Cycle</Badge>
+            </div>
+            <div className="space-y-2">
+              <KeyVal k="Campaign" v={context.campaignId} />
+              <KeyVal k="Target CPA" v={`$${context.kpis.targetCPA ?? "—"}`} />
+
+              <div className="pt-3">
+                <div className="mb-1 text-sm font-medium">Signals</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Spend by partner</div>
+                    <div className="mt-1 font-medium">
+                      Meta ${context.signals.spendByPartner.meta} · YouTube ${context.signals.spendByPartner.youtube} · CTV ${context.signals.spendByPartner.ctv}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Identity coverage</div>
+                    <div className="mt-1 font-medium">Meta {(context.signals.identityCoverage.meta * 100).toFixed(0)}% · YouTube {(context.signals.identityCoverage.youtube * 100).toFixed(0)}%</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">CPA by audience</div>
+                    <div className="mt-1 font-medium">LAL ${context.signals.cpaByAudience.lkal_2} · Broad ${context.signals.cpaByAudience.broad}</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Creative fatigue</div>
+                    <div className="mt-1 font-medium">ID 17 → {(context.signals.fatigueIndex.creative_17 * 100).toFixed(0)}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Candidates */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <h3 className="text-sm text-gray-500 mb-2">Candidates</h3>
+            <ul className="space-y-2">
+              {candidates.map((c) => (
+                <li key={c.id} className="flex items-center justify-between rounded-xl border p-3">
+                  <div>
+                    <div className="font-medium">{c.type.replace("_", " ")}</div>
+                    <div className="text-xs text-gray-600">{JSON.stringify(c.details)}</div>
+                  </div>
+                  <Badge className="bg-blue-50 text-blue-700">explore</Badge>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Ranked / Chart */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <h3 className="text-sm text-gray-500 mb-2">Ranked</h3>
+            {!rankResp ? (
+              <div className="text-sm text-gray-500">No recommendations yet</div>
+            ) : (
+              <>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="score" fill="#60a5fa" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <ul className="mt-3 space-y-2">
+                  {rankResp.ranked.map((r, idx) => (
+                    <li key={r.candidateId} className="flex items-center justify-between rounded-xl border p-3">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold">{idx + 1}</span>
+                        <div>
+                          <div className="font-medium">{r.candidateId}</div>
+                          <div className="text-xs text-gray-600">score {(r.score * 100).toFixed(1)} • prob {(r.probability ? r.probability * 100 : r.score * 100).toFixed(0)}%</div>
+                        </div>
+                      </div>
+                      {idx === 0 ? (
+                        <button onClick={approveChosen} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
+                          Approve & apply
+                        </button>
+                      ) : (
+                        <Badge className="bg-gray-50 text-gray-700">alternative</Badge>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        </div>
+
+        {/* Latest Reward (for learning) */}
+        <div className="mt-2 rounded-2xl bg-white p-5 shadow">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Latest Reward (for learning)</h2>
+            <Badge className="bg-amber-100 text-amber-800" title="Normalized 0..1">reward</Badge>
+          </div>
+          {!lastReward ? (
+            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">No reward posted yet. Approve a recommendation or enable auto-apply.</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Event</div>
+                <div className="font-medium break-all">{lastReward.eventId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Candidate</div>
+                <div className="font-medium">{lastReward.candidateId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Reward</div>
+                <div className="font-medium">{lastReward.reward}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Observed</div>
+                <div className="font-medium text-xs">{JSON.stringify(lastReward.observed)}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+     );
+   }
+ 
+  // -----------------------------
+  // Decision Engine UI (embedded local component)
+  // -----------------------------
+  function DecisionEngineMarketerUI() {
+    type KPI = { targetCPA?: number; targetROAS?: number };
+    type Context = { campaignId: string; cycleISO: string; kpis: KPI; signals: Record<string, any> };
+    type CandidateAction = { id: string; type: string; details: Record<string, any>; features?: Record<string, any> };
+    type RankRequest = { context: Context; candidates: CandidateAction[] };
+    type RankedItem = { candidateId: string; score: number; probability?: number };
+    type RankResponse = { eventId: string; chosen: RankedItem[]; ranked: RankedItem[]; reasons?: string[] };
+    type RewardEvent = { eventId: string; candidateId: string; reward: number; observed?: Record<string, number>; tsISO?: string };
+
+    const initialContext: Context = {
+      campaignId: "cmp_123",
+      cycleISO: new Date().toISOString(),
+      kpis: { targetCPA: 42 },
+      signals: {
+        spendByPartner: { meta: 4300, youtube: 2700, ctv: 800 },
+        cpaByAudience: { lkal_2: 38.2, broad: 55.9 },
+        identityCoverage: { meta: 0.62, youtube: 0.48 },
+        fatigueIndex: { creative_17: 0.81 },
+        paceVsPlan: { today: 0.94 },
+      },
+    };
+
+    const initialCandidates: CandidateAction[] = [
+      { id: "act_1", type: "budget_shift", details: { partner: "youtube", deltaPct: 10 } },
+      { id: "act_2", type: "pause_creative", details: { partner: "meta", creativeId: "creative_17" } },
+      { id: "act_3", type: "audience_expand", details: { partner: "ctv", segment: "lr_rampid_abc" } },
+    ];
+
+    function simulateAzurePersonalizer(req: RankRequest): RankResponse {
+      const { signals } = req.context;
+      const idCov = signals.identityCoverage || {};
+      const base = req.candidates.map((c) => {
+        let score = Math.random() * 0.2 + 0.4;
+        if (c.type === "budget_shift" && idCov[c.details.partner] > 0.5) score += 0.25;
+        if (c.type === "pause_creative") score += (signals.fatigueIndex?.[c.details.creativeId] || 0) * 0.3;
+        if (c.type === "audience_expand") score += 0.05;
+        return { candidateId: c.id, score, probability: Math.max(0.05, Math.min(0.95, score)) };
+      });
+      const ranked = base.sort((a, b) => b.score - a.score);
+      return { eventId: `rank_${Date.now()}_az`, chosen: [ranked[0]], ranked, reasons: ["Identity coverage trending higher", "Creative fatigue detected", "Maintaining exploration (ε≈0.1)"] };
+    }
+
+    function simulateVW(req: RankRequest): RankResponse {
+      const { signals } = req.context;
+      const fatigue = signals.fatigueIndex || {};
+      const results = req.candidates.map((c) => {
+        let s = Math.random() * 0.3 + 0.35;
+        if (c.type === "pause_creative") s += (fatigue[c.details.creativeId] || 0) * 0.25;
+        if (c.type === "budget_shift") s += 0.1;
+        if (c.type === "audience_expand") s += 0.08;
+        return { candidateId: c.id, score: s, probability: Math.max(0.05, Math.min(0.95, s)) };
+      });
+      const ranked = results.sort((a, b) => b.score - a.score);
+      return { eventId: `rank_${Date.now()}_vw`, chosen: [ranked[0]], ranked, reasons: ["Counterfactual-safe choice via propensity logging", "Exploration on for cold-start"] };
+    }
+
+    function Badge({ children, title, className = "" }: { children: React.ReactNode; title?: string; className?: string }) {
+      return <span title={title} className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>{children}</span>;
+    }
+    function KeyVal({ k, v }: { k: string; v: any }) {
+      return (
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">{k}</span>
+          <span className="font-medium text-gray-900">{String(v)}</span>
+        </div>
+      );
+    }
+
+    const [engine, setEngine] = useState<"Azure Personalizer" | "Vowpal Wabbit">("Azure Personalizer");
+    const [context, setContext] = useState<Context>(initialContext);
+    const [candidates, setCandidates] = useState<CandidateAction[]>(initialCandidates);
+    const [rankResp, setRankResp] = useState<RankResponse | null>(null);
+    const [autoApply, setAutoApply] = useState(false);
+    const [lastReward, setLastReward] = useState<RewardEvent | null>(null);
+
+    const chartData = useMemo(() => {
+      if (!rankResp) return [];
+      return rankResp.ranked.map((r) => ({ name: r.candidateId, score: Number((r.score * 100).toFixed(1)) }));
+    }, [rankResp]);
+
+    function runRank() {
+      const req: RankRequest = { context: { ...context, cycleISO: new Date().toISOString() }, candidates };
+      const res = engine === "Azure Personalizer" ? simulateAzurePersonalizer(req) : simulateVW(req);
+      setRankResp(res);
+      if (autoApply) {
+        setTimeout(() => {
+          const reward = Number((0.55 + Math.random() * 0.3).toFixed(2));
+          const evt: RewardEvent = { eventId: res.eventId, candidateId: res.chosen[0].candidateId, reward, observed: { conversions: Math.round(5 + Math.random() * 10), spend: Math.round(500 + Math.random() * 900) }, tsISO: new Date().toISOString() };
+          setLastReward(evt);
+        }, 600);
+      }
+    }
+
+    function approveChosen() {
+      if (!rankResp) return;
+      const reward = Number((0.55 + Math.random() * 0.3).toFixed(2));
+      const evt: RewardEvent = { eventId: rankResp.eventId, candidateId: rankResp.chosen[0].candidateId, reward, observed: { conversions: Math.round(5 + Math.random() * 10), spend: Math.round(500 + Math.random() * 900) }, tsISO: new Date().toISOString() };
+      setLastReward(evt);
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl bg-white p-5 shadow">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Decision Engine (Demo)</h2>
+            <div className="text-xs text-gray-500">Engine: {engine}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <select className="rounded-xl border bg-white px-3 py-2 text-sm shadow-sm" value={engine} onChange={(e) => setEngine(e.target.value as any)}>
+              <option>Azure Personalizer</option>
+              <option>Vowpal Wabbit</option>
+            </select>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4" checked={autoApply} onChange={(e) => setAutoApply(e.target.checked)} />
+              Auto-apply
+            </label>
+            <button onClick={runRank} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white">Get recommendations</button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Context + Signals */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm text-gray-500">Context</h3>
+              <Badge className="bg-gray-100 text-gray-700" title={context.cycleISO}>Cycle</Badge>
+            </div>
+            <div className="space-y-2">
+              <KeyVal k="Campaign" v={context.campaignId} />
+              <KeyVal k="Target CPA" v={`$${context.kpis.targetCPA ?? "—"}`} />
+
+              <div className="pt-3">
+                <div className="mb-1 text-sm font-medium">Signals</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Spend by partner</div>
+                    <div className="mt-1 font-medium">
+                      Meta ${context.signals.spendByPartner.meta} · YouTube ${context.signals.spendByPartner.youtube} · CTV ${context.signals.spendByPartner.ctv}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Identity coverage</div>
+                    <div className="mt-1 font-medium">Meta {(context.signals.identityCoverage.meta * 100).toFixed(0)}% · YouTube {(context.signals.identityCoverage.youtube * 100).toFixed(0)}%</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">CPA by audience</div>
+                    <div className="mt-1 font-medium">LAL ${context.signals.cpaByAudience.lkal_2} · Broad ${context.signals.cpaByAudience.broad}</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="text-gray-500">Creative fatigue</div>
+                    <div className="mt-1 font-medium">ID 17 → {(context.signals.fatigueIndex.creative_17 * 100).toFixed(0)}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Candidates */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <h3 className="text-sm text-gray-500 mb-2">Candidates</h3>
+            <ul className="space-y-2">
+              {candidates.map((c) => (
+                <li key={c.id} className="flex items-center justify-between rounded-xl border p-3">
+                  <div>
+                    <div className="font-medium">{c.type.replace("_", " ")}</div>
+                    <div className="text-xs text-gray-600">{JSON.stringify(c.details)}</div>
+                  </div>
+                  <Badge className="bg-blue-50 text-blue-700">explore</Badge>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Ranked / Chart */}
+          <section className="rounded-2xl bg-white p-5 shadow">
+            <h3 className="text-sm text-gray-500 mb-2">Ranked</h3>
+            {!rankResp ? (
+              <div className="text-sm text-gray-500">No recommendations yet</div>
+            ) : (
+              <>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="score" fill="#60a5fa" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <ul className="mt-3 space-y-2">
+                  {rankResp.ranked.map((r, idx) => (
+                    <li key={r.candidateId} className="flex items-center justify-between rounded-xl border p-3">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold">{idx + 1}</span>
+                        <div>
+                          <div className="font-medium">{r.candidateId}</div>
+                          <div className="text-xs text-gray-600">score {(r.score * 100).toFixed(1)} • prob {(r.probability ? r.probability * 100 : r.score * 100).toFixed(0)}%</div>
+                        </div>
+                      </div>
+                      {idx === 0 ? (
+                        <button onClick={approveChosen} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
+                          Approve & apply
+                        </button>
+                      ) : (
+                        <Badge className="bg-gray-50 text-gray-700">alternative</Badge>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        </div>
+
+        {/* Latest Reward (for learning) */}
+        <div className="mt-2 rounded-2xl bg-white p-5 shadow">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Latest Reward (for learning)</h2>
+            <Badge className="bg-amber-100 text-amber-800" title="Normalized 0..1">reward</Badge>
+          </div>
+          {!lastReward ? (
+            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-gray-500">No reward posted yet. Approve a recommendation or enable auto-apply.</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Event</div>
+                <div className="font-medium break-all">{lastReward.eventId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Candidate</div>
+                <div className="font-medium">{lastReward.candidateId}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Reward</div>
+                <div className="font-medium">{lastReward.reward}</div>
+              </div>
+              <div className="rounded-xl bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Observed</div>
+                <div className="font-medium text-xs">{JSON.stringify(lastReward.observed)}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+     );
+   }
+ 
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-7xl p-6">
