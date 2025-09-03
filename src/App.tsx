@@ -1574,7 +1574,7 @@ export default function App() {
 
         {/* Performance Chart */}
         <div className="card mb-6">
-          <h2 className="h2 mb-4">Campaign CPA Performance</h2>
+          <h2 className="h2 mb-4">Campaign Performance</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={performanceData}>
               <CartesianGrid strokeDasharray="3 3" />
